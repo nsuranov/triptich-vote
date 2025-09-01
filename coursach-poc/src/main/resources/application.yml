@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: coursach-poc
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://127.0.0.1:5435/devdb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: update
+server:
+  port: 8086
