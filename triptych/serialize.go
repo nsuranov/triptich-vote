@@ -36,6 +36,8 @@ func Serialize(sig *Signature) (raw []byte, keyImage []byte) {
 		}
 		buf.Write(b)
 	}
+	//_, pk := GenerateKey()
+	//fakeU := NewPoint(big.NewInt(1), big.NewInt(2))
 	return buf.Bytes(), sig.U.BytesCompressed()
 }
 

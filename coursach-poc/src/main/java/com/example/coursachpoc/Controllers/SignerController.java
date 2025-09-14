@@ -20,6 +20,6 @@ public class SignerController {
 
     @GetMapping("/ring")
     public ResponseEntity<RingDTO> getRing() {
-        return ResponseEntity.ok().body(signerService.getRing());
+        return ResponseEntity.ok().body(signerService.getRing(-1));
     }
 }

@@ -9,9 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,14 +28,33 @@ public class SignerService {
         signerRepo.save(signer);
     }
 
-    public RingDTO getRing(){
+    public RingDTO getRing(Integer exp) {
         List<Signer> signers = signerRepo.findAll();
-        RingDTO ringDTO = new RingDTO();
-        List<String>publicKeys = new ArrayList<>();
-        for(Signer signer : signers){
-            publicKeys.add(signer.getPublicKey());
+        int available = signers.size();
+
+        int requested;
+        if (exp == -1) {
+            // ищем максимальную степень двойки, которая помещается в available
+            requested = available;
+        } else {
+            requested = (int) Math.pow(2, exp);
         }
-        ringDTO.setPublicKeys(publicKeys);
-        return ringDTO;
+
+        int count = 1;
+        int realExp = 0;
+        while (count * 2 <= requested && count * 2 <= available) {
+            count *= 2;
+            realExp++;
+        }
+
+        Collections.shuffle(signers);
+        List<String> publicKeys = signers.stream()
+                .limit(count)
+                .map(Signer::getPublicKey)
+                .collect(Collectors.toList());
+
+        return new RingDTO(publicKeys, (long) count, (long) realExp, 2L);
     }
+
+
 }

@@ -11,4 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 public class RingDTO {
     private List<String> publicKeys;
+    private Long ringSize;
+    private Long exp;
+    private Long base;
 }

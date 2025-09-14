@@ -67,7 +67,7 @@ func main() {
 		log.Fatalf("deserialize: %v", err)
 	}
 
-	ok := triptych.VerifyTriptych(sig, []byte(*msg), ring, *n, *m)
+	ok, _ := triptych.VerifyTriptych(sig, []byte(*msg), ring, *n, *m)
 	if !ok {
 		fmt.Println("Verification FAILED")
 		os.Exit(1)
