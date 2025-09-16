@@ -11,27 +11,23 @@ import (
 	"time"
 )
 
-// ---- Конфигурация запуска ----
-
 type BenchConfig struct {
-	Base    int    `json:"base"`     // всегда 2
-	MinExp  int    `json:"min_exp"`  // по умолчанию 0
-	MaxExp  int    `json:"max_exp"`  // по умолчанию 12
-	Trials  int    `json:"trials"`   // по умолчанию 3
-	Message string `json:"message"`  // по умолчанию "hello"
-	OutPath string `json:"out_path"` // по умолчанию triptych_bench_results.json
+	Base    int    `json:"base"`
+	MinExp  int    `json:"min_exp"`
+	MaxExp  int    `json:"max_exp"`
+	Trials  int    `json:"trials"`
+	Message string `json:"message"`
+	OutPath string `json:"out_path"`
 }
-
-// ---- Результаты ----
 
 type TrialResult struct {
 	Exp            int     `json:"exp"`
 	RingSize       int     `json:"ring_size"`
 	Trial          int     `json:"trial"`
 	SignMS         float64 `json:"sign_ms"`
-	VerifyMS       float64 `json:"verify_ms"`       // только VerifyTriptych
-	VerifyTotalMS  float64 `json:"verify_total_ms"` // Deserialize + VerifyTriptych
-	SigLenBytes    int     `json:"sig_len_bytes"`   // keyimage + raw
+	VerifyMS       float64 `json:"verify_ms"`
+	VerifyTotalMS  float64 `json:"verify_total_ms"`
+	SigLenBytes    int     `json:"sig_len_bytes"`
 	RawLenBytes    int     `json:"raw_len_bytes"`
 	KeyImageBytes  int     `json:"keyimage_bytes"`
 	MessageLenByte int     `json:"message_len_byte"`
@@ -60,8 +56,6 @@ type BenchOutput struct {
 	Trials    []TrialResult `json:"trials"`
 }
 
-// ---- Вспомогательные функции ----
-
 func powInt(base, exp int) int {
 	res := 1
 	for i := 0; i < exp; i++ {
@@ -88,13 +82,11 @@ func minMaxAvg(vals []float64) (min, max, avg float64) {
 	return
 }
 
-// генерирует кольцо размера ringSize; первый элемент — pk сигнера.
-// Остальные — случайные публичные ключи (уникальные), полученные из GenerateKey().
 func buildRingWithSignerFirst(pkCompressed []byte, ringSize int) ([]*triptych.Point, error) {
 	if ringSize <= 0 {
 		return nil, fmt.Errorf("ringSize must be > 0")
 	}
-	// Парсим публиковый ключ сигнера в Point
+
 	signerPoint, err := triptych.ParseCompressed(pkCompressed)
 	if err != nil {
 		return nil, fmt.Errorf("parse signer pubkey: %w", err)
@@ -102,7 +94,6 @@ func buildRingWithSignerFirst(pkCompressed []byte, ringSize int) ([]*triptych.Po
 	ring := make([]*triptych.Point, 0, ringSize)
 	ring = append(ring, signerPoint)
 
-	// Чтобы избежать дубликатов, сохраняем hex сжатых ключей
 	seen := map[string]struct{}{
 		hex.EncodeToString(pkCompressed): {},
 	}
@@ -126,7 +117,7 @@ func buildRingWithSignerFirst(pkCompressed []byte, ringSize int) ([]*triptych.Po
 }
 
 func main() {
-	// --- Флаги ---
+
 	outPath := flag.String("out", "triptych_bench_results.json", "путь к JSON с результатами")
 	maxExp := flag.Int("max-exp", 15, "максимальная степень exp (размер кольца = 2^exp)")
 	trials := flag.Int("trials", 1, "число повторов на каждую конфигурацию")
@@ -152,7 +143,6 @@ func main() {
 	log.Printf("Triptych benchmark starting...")
 	log.Printf("Base=%d, exp in [%d..%d], trials=%d, msg=%q\n", cfg.Base, cfg.MinExp, cfg.MaxExp, cfg.Trials, cfg.Message)
 
-	// 1) Генерируем одну пару ключей для подписанта
 	sk, pk := triptych.GenerateKey()
 	pkCompressed := pk.BytesCompressed()
 	log.Printf("Signer key generated. Pub (compressed hex)=%s\n", hex.EncodeToString(pkCompressed))
@@ -165,7 +155,6 @@ func main() {
 	for exp := cfg.MinExp; exp <= cfg.MaxExp; exp++ {
 		ringSize := powInt(cfg.Base, exp)
 
-		// 2) Формируем кольцо указанного размера, включая наш pk
 		ring, err := buildRingWithSignerFirst(pkCompressed, ringSize)
 		if err != nil {
 			log.Fatalf("build ring (exp=%d, size=%d): %v", exp, ringSize, err)
@@ -180,7 +169,7 @@ func main() {
 
 		log.Printf("=== exp=%d, ringSize=%d ===", exp, ringSize)
 		for t := 1; t <= cfg.Trials; t++ {
-			// 3) Подпись
+
 			t0 := time.Now()
 			sig, ringUsed, err := triptych.RingSignTriptych(sk, msgBytes, ring, cfg.Base, exp)
 			if err != nil {
@@ -188,12 +177,10 @@ func main() {
 			}
 			signDur := time.Since(t0)
 
-			// сериализация
 			raw, keyImage := triptych.Serialize(sig)
 			totalSigLen := len(raw) + len(keyImage)
-			keyImgLen = len(keyImage) // одинаковый для всех прогонов в рамках exp
+			keyImgLen = len(keyImage)
 
-			// 4) Проверка — меряем отдельно чистое VerifyTriptych и «полное» (Deserialize + Verify)
 			t1 := time.Now()
 			sig2, err := triptych.Deserialize(raw, exp, cfg.Base, keyImage)
 			if err != nil {
@@ -201,9 +188,7 @@ func main() {
 			}
 			afterDeserialize := time.Now()
 			ok, _ := triptych.VerifyTriptych(sig2, msgBytes, ringUsed, cfg.Base, exp)
-			//if err != nil {
-			//	log.Fatalf("verify error (exp=%d, trial=%d): %v", exp, t, err)
-			//}
+
 			if !ok {
 				log.Fatalf("verify failed (exp=%d, trial=%d)", exp, t)
 			}

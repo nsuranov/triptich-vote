@@ -11,16 +11,15 @@ type Signature struct {
 	CommB *Point
 	CommC *Point
 	CommD *Point
-	X     []*Point     // len m
-	Y     []*Point     // len m
-	F     [][]*big.Int // m x (n-1) при подписи; верификатор восстанавливает первый столбец
+	X     []*Point
+	Y     []*Point
+	F     [][]*big.Int
 	ZA    *big.Int
 	ZC    *big.Int
 	Z     *big.Int
-	U     *Point // key image
+	U     *Point
 }
 
-// детерминированный transcript hash
 func transcriptHash(commA, commB, commC, commD *Point, X, Y []*Point, ring []*Point, message []byte) *big.Int {
 	var buf bytes.Buffer
 	buf.Write(commA.BytesCompressed())
@@ -141,8 +140,6 @@ func triptychGetY(rhos []*big.Int) []*Point {
 	return out
 }
 
-// RingSignTriptych — подпись.
-// seckey: 32 байта; message: произвольные; ring: массив публичных ключей (n^m штук, включая реальный)
 func RingSignTriptych(seckey []byte, message []byte, ring []*Point, n, m int) (*Signature, []*Point, error) {
 	N := 1
 	for i := 0; i < m; i++ {
@@ -164,7 +161,6 @@ func RingSignTriptych(seckey []byte, message []byte, ring []*Point, n, m int) (*
 		return nil, nil, ErrNoRealKey
 	}
 
-	// случайная перестановка кольца
 	ringSh := make([]*Point, len(ring))
 	copy(ringSh, ring)
 	for i := len(ringSh) - 1; i > 0; i-- {
@@ -235,8 +231,6 @@ func RingSignTriptych(seckey []byte, message []byte, ring []*Point, n, m int) (*
 	return sig, ringSh, nil
 }
 
-// VerifyTriptych теперь возвращает (ok, uNumCompressed),
-// где uNum — это compressed key image U (33 байта), стабильный для одного и того же секретного ключа.
 func VerifyTriptych(sig *Signature, message []byte, ring []*Point, n, m int) (bool, []byte) {
 	commA, commB, commC, commD := sig.CommA, sig.CommB, sig.CommC, sig.CommD
 	X, Y := sig.X, sig.Y
@@ -308,18 +302,15 @@ func VerifyTriptych(sig *Signature, message []byte, ring []*Point, n, m int) (bo
 		return false, nil
 	}
 
-	// успех — возвращаем uNum как compressed U
 	return true, U.BytesCompressed()
 }
 
-// ошибки
 type ErrRingSize struct{ Need, Got int }
 
 func (e ErrRingSize) Error() string { return "ring length must be n^m" }
 
 var ErrNoRealKey = errorsNew("ring must contain the signer pubkey")
 
-// локальная, чтобы не тянуть "errors" во множество файлов
 func errorsNew(s string) error { return &stringError{s} }
 
 type stringError struct{ s string }

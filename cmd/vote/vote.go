@@ -18,38 +18,32 @@ import (
 	"coursach/triptych/triptych"
 )
 
-// ===== DTOs с бэкенда =====
-
 type CandidateDTO struct {
 	ID       string `json:"id"`
 	Fullname string `json:"fullname"`
 }
 
 type RingDTO struct {
-	PublicKeys []string `json:"publicKeys"` // 33B compressed hex
+	PublicKeys []string `json:"publicKeys"`
 	RingSize   int      `json:"ringSize"`
 	Exp        int      `json:"exp"`
 	Base       int      `json:"base"`
 }
 
-// что отправляем на сервер бюллетеня
 type BulletinCreateDTO struct {
 	CandidateID  string   `json:"candidateId"`
-	SignatureB64 string   `json:"signatureB64"` // base64(keyImage||rawSig)
-	Ring         []string `json:"ring"`         // порядок кольца, использованный при подписи (33B hex)
+	SignatureB64 string   `json:"signatureB64"`
+	Ring         []string `json:"ring"`
 	N            int      `json:"n"`
 	M            int      `json:"m"`
 }
 
-// файл ключей, как мы делали в keygen
 type keypairFile struct {
 	FullName  string `json:"fullName"`
-	PublicKey string `json:"publicKey"` // 33B hex
-	SecretKey string `json:"secretKey"` // 32B hex
+	PublicKey string `json:"publicKey"`
+	SecretKey string `json:"secretKey"`
 	CreatedAt string `json:"createdAt"`
 }
-
-// ===== main =====
 
 func main() {
 	baseURL := flag.String("url", "", "базовый URL бэкенда (например http://localhost:8080)")
@@ -61,13 +55,10 @@ func main() {
 		log.Fatalf("usage: vote -url http://localhost:8080 -keys ./alice-key.json [-exp -1]")
 	}
 
-	// n всегда 2 (по требованию)
 	const N = 2
 
-	// 1) читаем ключи
 	kf, sk, _ := loadKeys(*keysPath)
 
-	// 2) тянем кандидатов
 	cands := fetchCandidates(*baseURL)
 	if len(cands) == 0 {
 		log.Fatal("список кандидатов пуст")
@@ -79,36 +70,29 @@ func main() {
 	}
 	idx := askIndex(len(cands))
 	cand := cands[idx]
-	msg := []byte(cand.ID) // подписываем UUID кандидата
+	msg := []byte(cand.ID)
 
-	// 3) тянем ВСЕ ключи с сервера (без параметров exp)
 	ringPointsAll, ringHexAll, ringDTO := fetchRingAll(*baseURL)
 
-	// Логи о том, что пришло с сервера
 	fmt.Printf("\n[LOG] Получено ключей от сервера: %d\n", len(ringHexAll))
 	fmt.Printf("[LOG] Метаданные сервера (если есть): exp=%d, ringSize=%d, base=%d\n", ringDTO.Exp, ringDTO.RingSize, ringDTO.Base)
 	fmt.Printf("[LOG] Запрошенная экспонента: %d (n всегда 2)\n", *exp)
 
-	// проверяем, что наш pk в полном кольце
 	if !containsHex(ringHexAll, kf.PublicKey) {
 		log.Fatalf("ваш публичный ключ отсутствует в кольце сервера. Сначала зарегистрируйте его через keygen, затем повторите попытку")
 	}
 
-	// 4) выбираем подмножество размера 2^m ИЗ ПОЛНОГО СПИСКА, не генерируя ничего
 	selectedPoints, selectedHex, m := selectSubsetEnsureSelf(ringPointsAll, ringHexAll, kf.PublicKey, *exp)
 
-	// Логи по выбранному подмножеству
 	targetSize := 1 << uint(m)
 	fmt.Printf("[LOG] Использованная экспонента (m): %d, итоговый размер кольца: 2^%d = %d\n", m, m, targetSize)
 
-	// 5) подписываем
 	sig, ringUsed, err := triptych.RingSignTriptych(sk, msg, selectedPoints, N, m)
 	if err != nil {
 		log.Fatalf("sign: %v", err)
 	}
 	raw, keyImg := triptych.Serialize(sig)
 
-	// 6) подготавливаем и отправляем бюллетень
 	sigB64 := base64.StdEncoding.EncodeToString(append(keyImg, raw...))
 	ringUsedHex := make([]string, len(ringUsed))
 	for i, p := range ringUsed {
@@ -129,8 +113,6 @@ func main() {
 	fmt.Printf("Ваш uNumber (key image): %s\n", hex.EncodeToString(keyImg))
 	fmt.Println("Важно: храните uNumber — по нему можно обнаружить повторный голос.")
 }
-
-// ===== helpers: io/network =====
 
 func loadKeys(path string) (keypairFile, []byte, *triptych.Point) {
 	b, err := os.ReadFile(path)
@@ -165,7 +147,6 @@ func fetchCandidates(baseURL string) []CandidateDTO {
 	return cands
 }
 
-// Запрашиваем ВСЕ ключи (без exp), используем только то, что пришло
 func fetchRingAll(baseURL string) ([]*triptych.Point, []string, RingDTO) {
 	u := strings.TrimRight(baseURL, "/") + "/api/signer/ring"
 	var resp RingDTO
@@ -226,8 +207,6 @@ func doJSON(method, url string, in interface{}, out interface{}) error {
 	return nil
 }
 
-// ===== helpers: ring math / ui =====
-
 func askIndex(max int) int {
 	r := bufio.NewReader(os.Stdin)
 	for {
@@ -252,7 +231,6 @@ func containsHex(arr []string, needle string) bool {
 	return false
 }
 
-// maxExpForSize возвращает максимальное e, такое что 2^e <= size
 func maxExpForSize(size int) int {
 	if size < 1 {
 		return 0
@@ -264,8 +242,6 @@ func maxExpForSize(size int) int {
 	return e
 }
 
-// selectSubsetEnsureSelf выбирает из ring ровно 2^m ключей (m вычисляется из желаемого exp и доступного размера),
-// гарантируя присутствие selfHex. Порядок сохраняется как на сервере: берём self и далее по кругу.
 func selectSubsetEnsureSelf(ring []*triptych.Point, ringHex []string, selfHex string, desiredExp int) ([]*triptych.Point, []string, int) {
 	total := len(ring)
 	if total != len(ringHex) {
@@ -286,7 +262,6 @@ func selectSubsetEnsureSelf(ring []*triptych.Point, ringHex []string, selfHex st
 
 	maxExp := maxExpForSize(total)
 
-	// Если exp не задан (=-1) — берём максимально возможный, иначе ограничиваем сверху
 	var m int
 	if desiredExp < 0 {
 		m = maxExp
@@ -298,7 +273,6 @@ func selectSubsetEnsureSelf(ring []*triptych.Point, ringHex []string, selfHex st
 		}
 	}
 
-	// Требуем хотя бы 2 участника (m >= 1)
 	if m < 1 {
 		log.Fatalf("недостаточно ключей для формирования кольца: всего=%d, требуется минимум 2 (2^1)", total)
 	}
@@ -308,7 +282,6 @@ func selectSubsetEnsureSelf(ring []*triptych.Point, ringHex []string, selfHex st
 	selectedPts := make([]*triptych.Point, 0, want)
 	selectedHex := make([]string, 0, want)
 
-	// Всегда включаем свой ключ и затем добираем следующие по порядку (циклически)
 	for j := 0; j < want; j++ {
 		idx := (selfIdx + j) % total
 		selectedPts = append(selectedPts, ring[idx])

@@ -81,7 +81,6 @@ func main() {
 
 	raw, keyImg := triptych.Serialize(sig)
 
-	// сохраняем подпись и key image
 	if err := os.WriteFile(*outSig, []byte(base64.StdEncoding.EncodeToString(append(keyImg, raw...))), 0644); err != nil {
 		log.Fatalf("write sig: %v", err)
 	}

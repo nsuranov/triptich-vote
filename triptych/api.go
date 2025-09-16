@@ -1,7 +1,5 @@
 package triptych
 
-// ВНИМАНИЕ: учебная реализация, не constant-time и не для продакшена.
-
 func GenerateKey() (sk32 []byte, pk *Point) {
 	k := randScalar()
 	pk = baseScalarMult(k)

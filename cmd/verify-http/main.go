@@ -13,16 +13,16 @@ import (
 )
 
 type VerifyRequest struct {
-	Message      string   `json:"message"`      // UUID кандидата
-	SignatureB64 string   `json:"signatureB64"` // base64(keyImage||rawSig)
-	Ring         []string `json:"ring"`         // массив 33B hex, порядок критичен
+	Message      string   `json:"message"`
+	SignatureB64 string   `json:"signatureB64"`
+	Ring         []string `json:"ring"`
 	N            int      `json:"n"`
 	M            int      `json:"m"`
 }
 
 type VerifyResponse struct {
 	OK      bool   `json:"ok"`
-	UNumber string `json:"uNumber,omitempty"` // hex(keyImage)
+	UNumber string `json:"uNumber,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
 
@@ -79,7 +79,6 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[verify] decoded signature: keyImg=%s raw=%d bytes",
 		hex.EncodeToString(keyImg), len(raw))
 
-	// собираем кольцо
 	N := 1
 	for i := 0; i < req.M; i++ {
 		N *= req.N
@@ -106,7 +105,6 @@ func handleVerify(w http.ResponseWriter, r *http.Request) {
 		ring[i] = P
 	}
 
-	// десериализуем подпись (U берём из первых 33 байт blob)
 	sig, err := triptych.Deserialize(raw, req.M, req.N, keyImg)
 	if err != nil {
 		log.Printf("[verify] deserialize error: %v", err)

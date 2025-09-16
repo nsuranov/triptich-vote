@@ -12,7 +12,6 @@ func delta(a, b int) int {
 	return 0
 }
 
-// разложение x в базе n длиной m (младшие разряды первыми)
 func naryDecomp(x, n, m int) []int {
 	if n == 0 {
 		out := make([]int, m)
@@ -30,7 +29,6 @@ func naryDecomp(x, n, m int) []int {
 	return digits
 }
 
-// умножение полинома на линейный (a x + b), коэффициенты в порядке убывания степеней
 func polyMultLin(coeffs []*big.Int, a, b *big.Int) []*big.Int {
 	L := len(coeffs)
 	out := make([]*big.Int, L+1)

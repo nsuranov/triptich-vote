@@ -36,20 +36,17 @@ func Serialize(sig *Signature) (raw []byte, keyImage []byte) {
 		}
 		buf.Write(b)
 	}
-	//_, pk := GenerateKey()
-	//fakeU := NewPoint(big.NewInt(1), big.NewInt(2))
+
 	return buf.Bytes(), sig.U.BytesCompressed()
 }
 
-// Deserialize — требуется знать m и n (как и при верификации)
-// ВАЖНО: keyImg — это сжатая точка U (33 байта), передаваемая отдельно (как у тебя: первые 33 байта перед raw).
 func Deserialize(raw []byte, m, n int, keyImg []byte) (*Signature, error) {
 	need :=
-		4*33 + // A,B,C,D
-			m*33 + // X
-			m*33 + // Y
-			m*(n-1)*32 + // F (без первого столбца)
-			3*32 // ZA,ZC,Z
+		4*33 +
+			m*33 +
+			m*33 +
+			m*(n-1)*32 +
+			3*32
 	if len(raw) != need {
 		return nil, errors.New("invalid raw length for given m,n")
 	}
@@ -106,7 +103,6 @@ func Deserialize(raw []byte, m, n int, keyImg []byte) (*Signature, error) {
 	return sig, nil
 }
 
-// helpers for CLI
 func HexToBytes(s string) ([]byte, error) {
 	return hex.DecodeString(s)
 }

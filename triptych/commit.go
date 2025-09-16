@@ -2,7 +2,6 @@ package triptych
 
 import "math/big"
 
-// случайная матрица с нулевыми суммами по строкам (grwzsr)
 func grwzsr(n, m int) [][]*big.Int {
 	mat := make([][]*big.Int, m)
 	for j := 0; j < m; j++ {

@@ -23,17 +23,16 @@ type signerCreateDTO struct {
 
 type keypairFile struct {
 	FullName  string `json:"fullName"`
-	PublicKey string `json:"publicKey"` // 33B compressed, hex
-	SecretKey string `json:"secretKey"` // 32B hex
+	PublicKey string `json:"publicKey"`
+	SecretKey string `json:"secretKey"`
 	CreatedAt string `json:"createdAt"`
 }
 
 func main() {
-	// optional flags
+
 	outPath := flag.String("out", "", "путь к файлу для сохранения пары ключей (по умолчанию: <name>-key.json)")
 	flag.Parse()
 
-	// required positional args: <fullName> <baseURL>
 	args := flag.Args()
 	if len(args) < 2 {
 		fmt.Println("usage: keygen [-out file.json] <fullName> <baseURL>")
@@ -43,12 +42,10 @@ func main() {
 	fullName := args[0]
 	baseURL := args[1]
 
-	// 1) generate keys
 	sk, pk := triptych.GenerateKey()
 	pkHex := hex.EncodeToString(pk.BytesCompressed())
 	skHex := hex.EncodeToString(sk)
 
-	// 2) save to file (0600)
 	fileName := *outPath
 	if fileName == "" {
 		fileName = defaultFileName(fullName)
@@ -65,7 +62,6 @@ func main() {
 	}
 	fmt.Printf("Keypair saved to %s\n", fileName)
 
-	// 3) HTTP POST to <baseURL>/api/signer
 	registerURL := strings.TrimRight(baseURL, "/") + "/api/signer"
 	payload := signerCreateDTO{FullName: fullName, PublicKey: pkHex}
 	body, _ := json.Marshal(payload)
@@ -93,20 +89,18 @@ func main() {
 	fmt.Printf("Registered successfully at %s\n", registerURL)
 }
 
-// --- helpers ---
-
 func writeKeyFile(path string, kf keypairFile) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		// ignore error if path has no dir component
+
 	}
 	b, _ := json.MarshalIndent(kf, "", "  ")
-	// 0600: чтобы приватный ключ не был доступен другим пользователям
+
 	return os.WriteFile(path, b, 0o600)
 }
 
 func defaultFileName(fullName string) string {
 	s := strings.ToLower(strings.TrimSpace(fullName))
-	// заменить всё, кроме латиницы/цифр/дефиса/подчёркивания, на "_"
+
 	re := regexp.MustCompile(`[^a-z0-9\-_]+`)
 	s = re.ReplaceAllString(s, "_")
 	if s == "" {

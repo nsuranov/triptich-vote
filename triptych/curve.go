@@ -8,18 +8,16 @@ import (
 )
 
 var (
-	// p = 2^256 - 2^32 - 977
 	secpP, _ = new(big.Int).SetString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F", 16)
-	// n = order
+
 	secpN, _ = new(big.Int).SetString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
-	// y^2 = x^3 + 7
+
 	secpB = big.NewInt(7)
 
 	Gx, _ = new(big.Int).SetString("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798", 16)
 	Gy, _ = new(big.Int).SetString("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8", 16)
 )
 
-// Point — точка на кривой
 type Point struct {
 	X, Y *big.Int
 	Inf  bool
@@ -67,7 +65,6 @@ func modMul(a, b, mod *big.Int) *big.Int {
 }
 func modPow(a, e, mod *big.Int) *big.Int { return new(big.Int).Exp(a, e, mod) }
 
-// sqrtModP: p ≡ 3 (mod 4)
 func sqrtModP(a *big.Int) (*big.Int, bool) {
 	ls := new(big.Int).Exp(a, new(big.Int).Rsh(new(big.Int).Sub(secpP, big.NewInt(1)), 1), secpP)
 	if ls.Sign() == 0 {
@@ -153,7 +150,6 @@ func pointsSum(points []*Point) *Point {
 	return acc
 }
 
-// Compressed (33 байта)
 func (P *Point) BytesCompressed() []byte {
 	if P == nil || P.Inf {
 		out := make([]byte, 33)
@@ -208,7 +204,6 @@ func PointsEqual(a, b *Point) bool {
 	return a.X.Cmp(b.X) == 0 && a.Y.Cmp(b.Y) == 0
 }
 
-// hashToField — детерминированный маппинг для NUMS
 func hashToField(seed []byte) *big.Int {
 	h := sha256.Sum256(seed)
 	x := new(big.Int).SetBytes(h[:])
